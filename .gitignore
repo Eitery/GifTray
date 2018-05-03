@@ -30,3 +30,7 @@
 *.exe
 *.out
 *.app
+
+.vs
+GifTray/x64
+x64

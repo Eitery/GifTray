@@ -16,9 +16,9 @@ HINSTANCE hInst;
 HWND hWnd;
 MessageProcessor processor;
 
-LRESULT CALLBACK WndProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
+LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
-	if (Message == WM_TASKBAR_CREATE) 
+	if (message == WM_TASKBAR_CREATE) 
 	{
 		if (!Shell_NotifyIcon(NIM_ADD, &notifyIconData)) {
 			MessageBox(NULL, "Systray Icon Creation Failed!", "Error!", MB_ICONEXCLAMATION | MB_OK);
@@ -27,19 +27,22 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
 		}
 	}
 
-	switch (Message)
+	switch (message)
 	{
 	case WM_DESTROY:
 		Shell_NotifyIcon(NIM_DELETE, &notifyIconData);
 		PostQuitMessage(0);
 		break;
+	case WM_HOTKEY:
+
+		break;
 	case WM_CLOSE:
-		DestroyWindow(hWnd);	// Destroy Window
+		DestroyWindow(hWnd);
 		break;
 	default:
-		return processor.ProcessMessage(hwnd, Message, wParam, lParam);
+		return DefWindowProc(hwnd, message, wParam, lParam);
 	}
-	return 0;		// Return 0 = Message successfully proccessed
+	return 0;
 }
 
 bool RegisterWindowClass(HINSTANCE instanceHandle)
@@ -104,19 +107,26 @@ int WINAPI WinMain(
 		hWnd = CreateWindowEx(WS_EX_CLIENTEDGE, "Ftor app", "Ftor ditch", WS_OVERLAPPEDWINDOW, CW_USEDEFAULT,
 			CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, NULL, NULL, hInstance, NULL);
 
+
+
 		auto result = GetLastError();
 
 		if (hWnd != NULL)
 		{
 			if (DisplayTrayIcon(hWnd))
 			{
-				MSG message;
-				while (GetMessage(&message, NULL, 0, 0))
+				// TODO(DL): to config
+				// TODO(DL): handle if register key failed
+				if (RegisterHotKey(hWnd, 1, MOD_ALT | MOD_NOREPEAT | MOD_WIN, VK_OEM_PERIOD))
 				{
-					TranslateMessage(&message);
-					DispatchMessage(&message);
+					MSG message;
+					while (GetMessage(&message, NULL, 0, 0))
+					{
+						TranslateMessage(&message);
+						DispatchMessage(&message);
+					}
+					return (int)message.wParam;
 				}
-				return message.wParam;
 			}
 		}
 		MessageBox(NULL, "Window Creation Failed!", "Error!", MB_ICONEXCLAMATION | MB_OK);
