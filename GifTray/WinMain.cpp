@@ -18,9 +18,12 @@ MessageProcessor processor;
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
-	if (message == WM_TASKBAR_CREATE) 
+	static HDC disp;
+
+	if (message == WM_TASKBAR_CREATE)
 	{
-		if (!Shell_NotifyIcon(NIM_ADD, &notifyIconData)) {
+		if (!Shell_NotifyIcon(NIM_ADD, &notifyIconData))
+		{
 			MessageBox(NULL, "Systray Icon Creation Failed!", "Error!", MB_ICONEXCLAMATION | MB_OK);
 			DestroyWindow(hWnd);
 			return -1;
@@ -29,12 +32,38 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 	switch (message)
 	{
+	case WM_CREATE:
+		disp = CreateDC("DISPLAY", NULL, NULL, NULL);
+		SetTimer(hwnd, 1, 500, NULL);
+		break;
+	case WM_TIMER:
+	{
+		HDC currentDisplayContext;
+		HDC compatibleDisplayContext;
+
+		currentDisplayContext = GetDC(hwnd);
+		compatibleDisplayContext = CreateCompatibleDC(currentDisplayContext);
+		HBRUSH TransperrantBrush = (HBRUSH)::GetStockObject(NULL_BRUSH);
+		HPEN pen = CreatePen(PS_SOLID, 1, RGB(0, 0, 0));
+
+		SelectObject(compatibleDisplayContext, TransperrantBrush);
+		Rectangle(disp, 100, 100, 200, 200);
+
+		DeleteObject(compatibleDisplayContext);
+
+		GetStockObject(WHITE_BRUSH);
+		GetStockObject(DC_PEN);
+
+		DeleteDC(compatibleDisplayContext);
+		DeleteDC(currentDisplayContext);
+	}
+	break;
 	case WM_DESTROY:
 		Shell_NotifyIcon(NIM_DELETE, &notifyIconData);
 		PostQuitMessage(0);
 		break;
 	case WM_HOTKEY:
-
+		SendMessage(hwnd, WM_CLOSE, 0, 0);
 		break;
 	case WM_CLOSE:
 		DestroyWindow(hWnd);
@@ -62,7 +91,8 @@ bool RegisterWindowClass(HINSTANCE instanceHandle)
 	wc.hIconSm = LoadIcon(instanceHandle, (LPCTSTR)MAKEINTRESOURCE(IDI_ICON1));
 
 	auto result = RegisterClassEx(&wc);
-	if (!result) {
+	if (!result)
+	{
 		MessageBox(NULL, "Window Registration Failed!", "Error!", MB_ICONEXCLAMATION | MB_OK);
 		return false;
 	}
@@ -81,8 +111,8 @@ bool DisplayTrayIcon(HWND hWnd)
 	notifyIconData.hIcon = NULL;
 	notifyIconData.uCallbackMessage = WM_USER_SHELLICON;
 
-	// Display tray icon
-	if (!Shell_NotifyIcon(NIM_ADD, &notifyIconData)) {
+	if (!Shell_NotifyIcon(NIM_ADD, &notifyIconData))
+	{
 		MessageBox(NULL, "Systray Icon Creation Failed!", "Error!", MB_ICONEXCLAMATION | MB_OK);
 		return false;
 	}
@@ -95,19 +125,17 @@ int WINAPI WinMain(
 	HINSTANCE hPrevInstance,
 	LPSTR     lpCmdLine,
 	int       nCmdShow)
- {
+{
 	HANDLE hMutexInstance;
 	hMutexInstance = CreateMutex(NULL, FALSE, _T("GifTray-{96387D4C-6CA0-4E7A-AE72-23B44B338779}"));
 
 	if (GetLastError() == ERROR_ALREADY_EXISTS || GetLastError() == ERROR_ACCESS_DENIED)
 		return 0;
-	
+
 	if (RegisterWindowClass(hInstance))
 	{
 		hWnd = CreateWindowEx(WS_EX_CLIENTEDGE, "Ftor app", "Ftor ditch", WS_OVERLAPPEDWINDOW, CW_USEDEFAULT,
 			CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, NULL, NULL, hInstance, NULL);
-
-
 
 		auto result = GetLastError();
 
